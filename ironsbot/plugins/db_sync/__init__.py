@@ -103,4 +103,7 @@ async def _on_startup() -> None:
     logger.info(
         f"数据库同步插件已启动，同步间隔: {plugin_config.db_sync_interval_minutes} 分钟"
     )
-    await sync_database()
+    if plugin_config.db_sync_on_startup:
+        await sync_database()
+    else:
+        logger.info("启动时自动同步已禁用，等待定时任务触发")
