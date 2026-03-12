@@ -1,25 +1,27 @@
-from nonebot import on_command
 from nonebot.adapters import Message, MessageTemplate
 from nonebot.adapters.onebot.v11 import Message as OneBotV11Message
 from nonebot.adapters.onebot.v11 import MessageSegment as OneBotV11MessageSegment
 from nonebot.exception import FinishedException
 from nonebot.matcher import Matcher
-from nonebot.rule import to_me
 from nonebot.typing import T_State
 from seerapi_models import PetORM, PetSkinORM
 
-from ironsbot.plugins.get_info.prompt import (
+from ironsbot.plugins.get_seer_info.group import matcher_group
+from ironsbot.utils.rule import no_reply, startswith_or_endswith
+
+from ..depends import GetPetData, GetPetSkinData, PetBodyImageGetter, PetDataGetter
+from ..prompt import (
     PROMPT_STATE_KEY,
     Prompt,
     PromptItem,
     create_prompt_got_handler,
     simple_prompt_resolver,
 )
-
-from ..depends import GetPetData, GetPetSkinData, PetBodyImageGetter, PetDataGetter
 from ..render import render_pet_info
 
-pet_image_matcher = on_command("立绘", rule=to_me(), priority=3, block=True)
+pet_image_matcher = matcher_group.on_message(
+    rule=startswith_or_endswith("立绘") & no_reply()
+)
 
 
 PROMPT_MAX_ITEMS = 20
@@ -60,7 +62,7 @@ async def handle_pet_image(
 
 
 async def build_pet_image_message(args: PromptItem[int]) -> Message:
-    image = await PetBodyImageGetter(str(args.value), cls=OneBotV11MessageSegment)
+    image = await PetBodyImageGetter.get(str(args.value))
     msg = OneBotV11Message()
     msg += f"💎{args.name}\n"
     msg += image
@@ -81,7 +83,9 @@ pet_image_matcher.got(PET_IMAGE_GOT_KEY, prompt=MessageTemplate("{prompt_message
 
 # ============ 精灵信息卡 ============
 
-pet_info_matcher = on_command("精灵", rule=to_me(), priority=3, block=True)
+pet_info_matcher = matcher_group.on_message(
+    rule=startswith_or_endswith(("精灵", "查询精灵信息", "魂印", "技能")) & no_reply()
+)
 
 
 @pet_info_matcher.handle()

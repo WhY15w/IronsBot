@@ -1,0 +1,52 @@
+from nonebot.plugin import PluginMetadata
+
+from .commands import (
+    data_version_matcher,
+    mintmark_matcher,
+    pet_image_matcher,
+    pet_info_matcher,
+    preview_matcher,
+)
+from .config import Config
+
+usage = """🤖赛尔号数据查询插件，所有命令需放置在消息开头或结尾才能触发，命令和参数间可不添加空格。
+💡注意：回复他人消息时不会触发命令。
+支持名称模糊搜索和 ID 精确查找，若有多个匹配结果将提示选择。
+（🔍名称搜索时可省略 · - 等符号，不区分大小写）
+
+命令：
+  🐱精灵相关：
+    精灵/查询精灵信息/魂印/技能 <名称/ID>  — 查询精灵基础信息
+    > 精灵雷伊
+    > 奥菲魂印
+    > 圣武技能
+
+    立绘/查询立绘 <名称/ID>  — 查询精灵或皮肤立绘
+    > 雷伊立绘
+
+
+  💮刻印相关：
+    刻印 <名称/ID>  — 查询刻印信息及数值，支持刻印系列名称搜索
+    > 刻印v8
+    > 刻印精灵王
+
+
+  🔀其他：
+    下周预告 — 获取下周预告图
+    数据版本 — 获取数据更新时间"""
+
+__plugin_meta__ = PluginMetadata(
+    name="get_seer_info",
+    description="赛尔号信息查询",
+    usage=usage,
+    config=Config,
+    supported_adapters={"~onebot.v11"},
+)
+
+__all__ = [
+    "data_version_matcher",
+    "mintmark_matcher",
+    "pet_image_matcher",
+    "pet_info_matcher",
+    "preview_matcher",
+]

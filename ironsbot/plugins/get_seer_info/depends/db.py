@@ -1,8 +1,10 @@
+import re
 from collections.abc import Callable
 from typing import Annotated, Any, Generic, TypeVar
 
 from nonebot.params import Depends
 from seerapi_models import MintmarkClassCategoryORM, MintmarkORM, PetORM, PetSkinORM
+from sqlalchemy import func
 from sqlmodel import SQLModel, col, select
 
 from ironsbot.utils.parse_arg import parse_string_arg
@@ -10,6 +12,22 @@ from ironsbot.utils.parse_arg import parse_string_arg
 from ..db import SQLModelSession, get_session
 
 T = TypeVar("T", bound=SQLModel)
+
+_IGNORED_CHARS = ".·・•‧∙⋅。—\u2013-_/ "
+_IGNORED_CHARS_PATTERN = re.compile(f"[{re.escape(_IGNORED_CHARS)}]")
+
+
+def _strip_special(text: str) -> str:
+    return _IGNORED_CHARS_PATTERN.sub("", text)
+
+
+def _col_strip_special(column: Any) -> Any:
+    """构建一个 SQL 表达式，将列中的特殊字符逐个替换为空字符串。"""
+    expr = column
+    for char in _IGNORED_CHARS:
+        expr = func.replace(expr, char, "")
+    return expr
+
 
 Session = Annotated[SQLModelSession, Depends(get_session)]
 
@@ -45,7 +63,10 @@ class GetData(Generic[T]):
 
             return []
 
-        statement = select(self.model).where(col(self.name_column).like(f"%{arg}%"))
+        stripped_arg = _strip_special(arg)
+        statement = select(self.model).where(
+            _col_strip_special(col(self.name_column)).like(f"%{stripped_arg}%")
+        )
         objs = session.exec(statement).all()
         return list(objs)
 
@@ -58,7 +79,10 @@ class GetPetDataByAlias(GetData[PetORM]):
     ) -> list[PetORM]:
         arg = self.arg_postprocess(arg)
 
-        statement = select(self.model).where(col(self.name_column).like(f"%{arg}%"))
+        stripped_arg = _strip_special(arg)
+        statement = select(self.model).where(
+            _col_strip_special(col(self.name_column)).like(f"%{stripped_arg}%")
+        )
         objs = session.exec(statement).all()
         return list(objs)
 
@@ -73,7 +97,7 @@ def GetPetData() -> Any:
 MintmarkDataGetter = GetData(MintmarkORM)
 
 
-def GetMintmarkData() -> Any:  # TODO
+def GetMintmarkData() -> Any:
     return Depends(GetData(MintmarkORM))
 
 

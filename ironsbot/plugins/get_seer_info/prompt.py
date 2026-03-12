@@ -11,7 +11,7 @@ from nonebot.typing import T_State
 from sqlmodel import SQLModel
 from typing_extensions import NamedTuple
 
-from ironsbot.plugins.get_info.db import SQLModelSession
+from ironsbot.plugins.get_seer_info.db import SQLModelSession
 
 from .depends import Session
 from .depends.db import GetData
@@ -148,7 +148,7 @@ def simple_prompt_resolver(
         obj = data_getter.get(session, item.value)
         if not obj:
             await matcher.finish(
-                f"❌未找到{entity_name}（这是一个bug，请反馈给开发者）"
+                f"❌未找到{entity_name} {item.value}（这是一个bug，请反馈给开发者）"
             )
         await matcher.finish(await message_builder(obj))
 

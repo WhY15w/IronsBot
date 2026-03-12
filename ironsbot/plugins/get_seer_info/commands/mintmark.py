@@ -1,14 +1,13 @@
-from nonebot import on_command
 from nonebot.adapters import Message, MessageTemplate
 from nonebot.adapters.onebot.v11 import Message as OneBotV11Message
-from nonebot.adapters.onebot.v11 import MessageSegment as OneBotV11MessageSegment
 from nonebot.exception import FinishedException
 from nonebot.matcher import Matcher
-from nonebot.params import CommandArg
-from nonebot.rule import to_me
+from nonebot.rule import startswith
 from nonebot.typing import T_State
 from seerapi_models import MintmarkClassCategoryORM, MintmarkORM
 from seerapi_models.mintmark import AbilityPartORM, UniversalPartORM
+
+from ironsbot.utils.rule import no_reply, startswith_or_endswith
 
 from ..depends import (
     GetMintmarkClassData,
@@ -16,6 +15,7 @@ from ..depends import (
     MintmarkBodyImageGetter,
     MintmarkDataGetter,
 )
+from ..group import matcher_group
 from ..prompt import (
     PROMPT_STATE_KEY,
     Prompt,
@@ -24,10 +24,14 @@ from ..prompt import (
     simple_prompt_resolver,
 )
 
-mintmark_matcher = on_command(("刻印"), priority=3, rule=to_me(), block=True)
+mintmark_matcher = matcher_group.on_message(
+    rule=startswith_or_endswith("刻印") & no_reply()
+)
 
 
 PROMPT_MAX_ITEMS = 20
+
+rule = startswith(("!", "/"), ignorecase=False)
 
 
 def _deduplicate(mintmarks: list[MintmarkORM]) -> list[MintmarkORM]:
@@ -44,15 +48,9 @@ def _deduplicate(mintmarks: list[MintmarkORM]) -> list[MintmarkORM]:
 async def handle_mintmark(
     matcher: Matcher,
     state: T_State,
-    arg: Message = CommandArg(),
     mintmarks: list[MintmarkORM] = GetMintmarkData(),
     classes: list[MintmarkClassCategoryORM] = GetMintmarkClassData(),
 ) -> None:
-    arg_str = arg.extract_plain_text()
-    if not arg_str:
-        await matcher.finish(
-            "❌请在刻印后面加上刻印名称！\n如：刻印02\n即可查询名称包含02的所有刻印\nP.S.发送时可省略 · - 等符号，同时支持大小写"
-        )
     mintmarks += [part.mintmark for c in classes for part in c.mintmark]
     mintmarks = _deduplicate(mintmarks)
 
@@ -85,7 +83,7 @@ async def build_mintmark_message(mintmark: MintmarkORM) -> Message:
     msg = OneBotV11Message()
     part = mintmark.ability_part or mintmark.skill_part or mintmark.universal_part
     msg += f"【{mintmark.name}】\n"
-    image = await MintmarkBodyImageGetter(str(mintmark.id), cls=OneBotV11MessageSegment)
+    image = await MintmarkBodyImageGetter.get(str(mintmark.id))
     msg += image
     msg += f"⭕🆔：{mintmark.id}\n"
     if isinstance(part, UniversalPartORM):
@@ -109,7 +107,7 @@ async def build_mintmark_message(mintmark: MintmarkORM) -> Message:
         f"{_fmt_attr('速度', attr.spd)}\n"
         f"{_fmt_attr('特攻', attr.sp_atk)}"
         f"{_fmt_attr('特防', attr.sp_def)}"
-        f"{_fmt_attr('体力', attr.hp)}\n"
+        f"{_fmt_attr('体力', attr.hp)}"
     )
     return msg
 

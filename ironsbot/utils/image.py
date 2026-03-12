@@ -23,19 +23,21 @@ async def create_image_segment_from_url(
 
 
 class GetImage:
-    def __init__(self, url_template: str) -> None:
+    def __init__(self, url_template: str, *, cls: type[MessageSegment]) -> None:
         self.url_template = url_template
+        self.cls = cls
+
+    async def get(self, arg: str) -> MessageSegment:
+        url = self.url_template.format(arg)
+        try:
+            return await create_image_segment_from_url(url, cls=self.cls)
+        except httpx.HTTPStatusError as e:
+            status_code = e.response.status_code
+            reason_phrase = e.response.reason_phrase
+            return self.cls.text(f"❌获取图片失败！原因：{status_code} {reason_phrase}")
 
     async def __call__(
         self,
         arg: str = Depends(parse_string_arg),
-        *,
-        cls: type[MessageSegment],
     ) -> MessageSegment:
-        url = self.url_template.format(arg)
-        try:
-            return await create_image_segment_from_url(url, cls=cls)
-        except httpx.HTTPStatusError as e:
-            status_code = e.response.status_code
-            reason_phrase = e.response.reason_phrase
-            return cls.text(f"❌获取图片失败！原因：{status_code} {reason_phrase}")
+        return await self.get(arg)

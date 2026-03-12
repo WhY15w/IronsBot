@@ -18,17 +18,15 @@ _driver = get_driver()
 _sync_lock = asyncio.Lock()
 
 
-def _dispose_existing_engine() -> None:
-    """释放 get_info 插件持有的数据库连接池，以便安全替换文件。"""
+def _reload_existing_engine() -> None:
+    """重建 get_seer_info 插件的数据库引擎，使其连接到新的数据库文件。"""
     try:
-        from ironsbot.plugins.get_info.db import get_engine
+        from ironsbot.plugins.get_seer_info.db import reload_engine
 
-        engine = get_engine()
-        if engine is not None:
-            engine.dispose()
-            logger.debug("已释放数据库连接池")
+        reload_engine()
+        logger.debug("已重建数据库引擎")
     except ImportError:
-        logger.debug("get_info 插件未加载，跳过连接释放")
+        logger.debug("get_seer_info 插件未加载，跳过引擎重建")
 
 
 def _validate_sqlite(path: Path) -> None:
@@ -69,7 +67,7 @@ async def sync_database() -> None:
                         f.write(chunk)
 
             _validate_sqlite(tmp_path)
-            _dispose_existing_engine()
+            _reload_existing_engine()
             tmp_path.replace(db_path)
 
             stat_result = await asyncio.to_thread(db_path.stat)

@@ -19,12 +19,18 @@ async def init_orm() -> None:
     SQLModel.metadata.create_all(_engine)
 
 
-def get_engine() -> Engine | None:
-    """获取数据库引擎实例。引擎未初始化时返回 None。"""
+def reload_engine() -> None:
+    """重建数据库引擎，用于数据库文件被替换后刷新连接。
+
+    旧引擎的连接池会被释放，但已检出的连接（正在使用的 session）不受影响。
+    """
+    global _engine
     try:
-        return _engine
+        old_engine = _engine
     except NameError:
-        return None
+        return
+    _engine = create_engine(plugin_config.database_url)
+    old_engine.dispose()
 
 
 def get_session() -> Generator[SQLModelSession, None, None]:
