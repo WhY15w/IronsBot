@@ -7,8 +7,8 @@ MemeType = Literal["tudou", "pig"]
 
 
 class Config(BaseModel):
-    cnb_token: str | None = None
-    cnb_repo: str | None = None
+    memes_cnb_token: str | None = None
+    memes_cnb_repo: str | None = None
     memes: frozenset[MemeType] = frozenset(["tudou", "pig"])
 
 

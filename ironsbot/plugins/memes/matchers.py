@@ -85,8 +85,10 @@ def create_image_command(
 
 COMMANDS: list[ImageCommandConfig] = []
 
-if plugin_config.cnb_token and plugin_config.cnb_repo:
-    _cnb_factory = get_cnb_api(plugin_config.cnb_token, plugin_config.cnb_repo)
+if plugin_config.memes_cnb_token and plugin_config.memes_cnb_repo:
+    _cnb_factory = get_cnb_api(
+        plugin_config.memes_cnb_token, plugin_config.memes_cnb_repo
+    )
 
     if meme_is_enabled("tudou"):
         COMMANDS.append(

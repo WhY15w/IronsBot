@@ -21,7 +21,97 @@
 
 
 ### 在 Linux 上部署（推荐）
-待补充
+
+#### 前置要求
+
+- [Docker Engine](https://docs.docker.com/engine/install/) 和 [Docker Compose](https://docs.docker.com/compose/install/)
+- 一个 OneBot 实现端
+
+我们使用[NapCat](https://github.com/NapNeko/NapCatQQ)作为OneBot实现端为例。
+#### 1. 创建工作目录
+
+```bash
+mkdir -p ~/ironsbot && cd ~/ironsbot
+```
+
+#### 2. 创建 docker-compose.yml
+
+创建 `docker-compose.yml` 文件，将以下示例配置粘贴进去，并根据注释修改对应的值：
+
+```yaml
+version: "3"
+
+services:
+  nonebot:
+    image: ghcr.io/nattsu39/ironsbot:latest
+    ports:
+      - "8080:8080"
+    environment:
+      # === 表情包插件必填配置，当缺少时相关命令将被禁用 ===
+      MEMES_CNB_TOKEN: "你的CNB令牌"
+      
+      # === 表情包插件可选配置 ===
+      # MEMES_CNB_REPO: "Nattsu39/tudou"
+      
+      # === 赛尔号数据查询插件可选配置 ===
+      # DATABASE_URL: "sqlite:///seerapi-data.sqlite"
+
+      # === db_sync 插件可选配置 ===
+      # DB_SYNC_URL: "https://github.com/SeerAPI/api-data/releases/download/latest/seerapi-data.sqlite"
+      # DB_SYNC_INTERVAL_MINUTES: "60"
+      # DB_SYNC_PATH: "seerapi-data.sqlite"
+      # DB_SYNC_ON_STARTUP: "true"
+
+      # --- 机器人配置（以下均为默认值，按需修改） ---
+      # HOST: "0.0.0.0"
+      # PORT: "8080"                  # 修改后需同步更新上方 ports 映射
+      # COMMAND_START: '[""]'
+      # SUPERUSERS: '[]'
+
+    restart: always
+
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    container_name: napcat
+    restart: always
+    mac_address: 02:42:ac:11:00:02
+
+    environment:
+      - NAPCAT_UID=${NAPCAT_UID}
+      - NAPCAT_GID=${NAPCAT_GID}
+    
+    ports:
+      - 3001:3001
+      - 6099:6099
+    
+    volumes:
+      - ./napcat/config:/app/napcat/config
+      - ./ntqq:/app/.config/QQ
+```
+
+完整的变量说明请参考仓库中的 [`.env.example`](.env.example)。
+
+#### 3. 启动服务
+
+```bash
+docker compose up -d
+```
+
+查看日志确认启动成功：
+
+```bash
+docker compose logs -f
+```
+
+#### 4. 连接 OneBot 实现端
+
+两个容器处于同一 Compose 网络中，可以通过服务名互相访问。在 NapCat 的配置中，将反向 WebSocket 地址设置为：
+
+```
+ws://nonebot:8080/onebot/v11/ws
+```
+
+> `nonebot` 是 `docker-compose.yml` 中定义的服务名，Compose 会自动将其解析为对应容器的内部 IP。
 
 ### 在 Windows 上部署
 待补充
