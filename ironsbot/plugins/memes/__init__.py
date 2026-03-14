@@ -12,8 +12,8 @@ usage = """表情包相关命令
 """
 
 __plugin_meta__ = PluginMetadata(
-    name="memes",
-    description="表情包命令",
+    name="表情包",
+    description="随机或是指定输出一张可爱表情包",
     usage=usage,
     config=Config,
     supported_adapters={"~onebot.v11"},
