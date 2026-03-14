@@ -109,7 +109,12 @@ if plugin_config.memes_cnb_token and plugin_config.memes_cnb_repo:
             aliases={"今日土豆", "随机土豆", "🥔"},
             max_index=2185,
             image_path_template="tudou/{index}.gif",
-            message_template=DEFAULT_MESSAGE_TEMPLATE,
+            message_template=MessageTemplate(
+                "{random_text}{command}（{index}/{total}）\n"
+                "🌈发【{command}x】直接出x号{command}，不加数字默认随机发送\n"
+                "{image}\n"
+                "图片收集自 @火火"
+            ),
         )
     )
     COMMANDS.append(
