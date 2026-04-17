@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 from collections.abc import Sequence
 from typing import TypedDict
 
@@ -6,6 +7,7 @@ from nonebot_plugin_htmlkit import template_to_pic
 from seerapi_models import PeakExpertPoolORM, PeakPoolORM
 
 from ..depends.image import ElementTypeImageGetter, PetHeadImageGetter
+from ._cache import render_cache
 from ._common import TEMPLATES_PATH, to_data_uri
 
 TEMPLATE_PATH = TEMPLATES_PATH / "peak_pool"
@@ -31,10 +33,23 @@ class PoolDict(TypedDict):
     pets: list[PetInPoolDict]
 
 
+def _peak_pool_cache_key(
+    pools: Sequence[PeakPoolORM | PeakExpertPoolORM], pool_type: str
+) -> str:
+    pool_ids = sorted(p.id for p in pools)
+    raw = f"{pool_ids}:{pool_type}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:12]
+
+
 async def render_peak_pool(
     pools: Sequence[PeakPoolORM | PeakExpertPoolORM], pool_type: str
 ) -> bytes:
     """渲染巅峰池信息卡片图片，返回 PNG 图片字节"""
+    content_key = _peak_pool_cache_key(pools, pool_type)
+    cached = render_cache.get("peak_pool", content_key)
+    if cached is not None:
+        return cached
+
     unique_rids: dict[str, None] = {}
     unique_type_ids: dict[int, None] = {}
 
@@ -87,7 +102,7 @@ async def render_peak_pool(
     grid_width = cols * CELL_WIDTH + (cols - 1) * CELL_GAP
     max_width = grid_width + POOL_OVERHEAD + CONTAINER_PADDING
 
-    return await template_to_pic(
+    result = await template_to_pic(
         template_path=[TEMPLATE_PATH, SHARED_PATH],
         template_name="template.html",
         templates={
@@ -97,3 +112,5 @@ async def render_peak_pool(
         max_width=max_width + 20,
         allow_refit=False,
     )
+    render_cache.put("peak_pool", content_key, result)
+    return result

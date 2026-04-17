@@ -12,6 +12,7 @@ from ..depends.image import (
     PetBodyImageGetter,
     PetHeadImageGetter,
 )
+from ._cache import render_cache
 from ._common import TEMPLATES_PATH, to_data_uri
 
 TEMPLATE_PATH = TEMPLATES_PATH / "pet_info"
@@ -133,12 +134,29 @@ def _extract_soulmark(
 
 async def render_pet_info(pet: PetORM) -> bytes:
     """渲染精灵信息卡片图片，返回 PNG 图片字节"""
+    cached = render_cache.get("pet_info", str(pet.id))
+    if cached is not None:
+        return cached
+
     base_stats = pet.base_stats.to_model().round()
     stats = base_stats.model_dump()
     advance_stats = None
     if pet.advance:
         advance_stats = pet.advance.base_stats.to_model().round().model_dump()
-    soulmarks = [_extract_soulmark(sm, pet.glossary_entry) for sm in pet.soulmark]
+    soulmarks: list[SoulmarkDict] = [
+        _extract_soulmark(sm, pet.glossary_entry) for sm in pet.soulmark
+    ]
+    if pet.id == 2500:
+        soulmarks.append(
+            {
+                "desc": "登场首回合所有攻击先制+1同时增加20%暴击率",
+                "intensified": True,
+                "is_adv": False,
+                "pve_effective": None,
+                "tags": [],
+                "glossaries": [],
+            }
+        )
 
     all_skills: list[SkillDict] = [
         skill
@@ -177,7 +195,7 @@ async def render_pet_info(pet: PetORM) -> bytes:
     }
     type_icons["prop"] = to_data_uri(type_icon_results[-1])
 
-    return await template_to_pic(
+    result = await template_to_pic(
         template_path=TEMPLATE_PATH,
         template_name="template.html",
         templates={
@@ -201,3 +219,5 @@ async def render_pet_info(pet: PetORM) -> bytes:
         max_width=1200,
         allow_refit=False,
     )
+    render_cache.put("pet_info", str(pet.id), result)
+    return result
