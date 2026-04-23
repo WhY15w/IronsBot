@@ -1,9 +1,9 @@
 import asyncio
 from collections.abc import Callable
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, NamedTuple, TypedDict
 
 from nonebot_plugin_htmlkit import template_to_pic
-from seerapi_models import GlossaryEntryORM, PetORM, SkillInPetORM, SoulmarkORM
+from seerapi_models import PetORM, SkillInPetORM, SoulmarkORM
 
 from ironsbot.utils.analyze_parser import AnalyzeDescParser
 
@@ -48,7 +48,7 @@ class SkillDict(TypedDict):
     hide_effect_desc: str | None
 
 
-class GlossaryDict(TypedDict):
+class GlossaryDict(NamedTuple):
     name: str
     desc: str
 
@@ -59,7 +59,7 @@ class SoulmarkDict(TypedDict):
     is_adv: bool
     pve_effective: bool | None
     tags: list[str]
-    glossaries: list[GlossaryDict]
+    glossaries: set[GlossaryDict]
 
 
 def _extract_skill(skill_in_pet: SkillInPetORM) -> list[SkillDict]:
@@ -114,22 +114,30 @@ def _extract_skill(skill_in_pet: SkillInPetORM) -> list[SkillDict]:
     return [result]
 
 
-def _extract_soulmark(
-    sm: SoulmarkORM, glossaries: list[GlossaryEntryORM]
-) -> SoulmarkDict:
-    tags = [t.name for t in sm.tag] if sm.tag else []
-    desc_parser = AnalyzeDescParser(sm.analyze_desc or sm.desc)
-    desc = desc_parser.to_html(_ANALYZE_DESC_STYLES)
-    return {
-        "desc": desc,
-        "intensified": sm.intensified,
-        "is_adv": sm.is_adv,
-        "pve_effective": sm.pve_effective,
-        "tags": tags,
-        "glossaries": [
-            {"name": g.name, "desc": g.desc} for g in glossaries if g.name in desc
-        ],
-    }
+def _extract_soulmark(soulmarks: list[SoulmarkORM], pet: PetORM) -> list[SoulmarkDict]:
+    results: list[SoulmarkDict] = []
+    for sm in soulmarks:
+        result = SoulmarkDict(
+            desc=AnalyzeDescParser(sm.analyze_desc or sm.desc).to_html(
+                _ANALYZE_DESC_STYLES
+            ),
+            intensified=sm.intensified,
+            is_adv=sm.is_adv,
+            pve_effective=sm.pve_effective,
+            tags=[t.name for t in sm.tag] if sm.tag else [],
+            glossaries=set(),
+        )
+
+        results.append(result)
+
+    for i, sm in enumerate(reversed(results)):
+        for glossary in pet.glossary_entry:
+            if glossary.name not in sm["desc"] and i != 0:
+                continue
+
+            sm["glossaries"].add(GlossaryDict(name=glossary.name, desc=glossary.desc))
+
+    return results
 
 
 async def render_pet_info(pet: PetORM) -> bytes:
@@ -143,9 +151,8 @@ async def render_pet_info(pet: PetORM) -> bytes:
     advance_stats = None
     if pet.advance:
         advance_stats = pet.advance.base_stats.to_model().round().model_dump()
-    soulmarks: list[SoulmarkDict] = [
-        _extract_soulmark(sm, pet.glossary_entry) for sm in pet.soulmark
-    ]
+
+    soulmarks: list[SoulmarkDict] = _extract_soulmark(pet.soulmark, pet)
     if pet.id == 2500:
         soulmarks.append(
             {
@@ -154,7 +161,7 @@ async def render_pet_info(pet: PetORM) -> bytes:
                 "is_adv": False,
                 "pve_effective": None,
                 "tags": [],
-                "glossaries": [],
+                "glossaries": set(),
             }
         )
 
