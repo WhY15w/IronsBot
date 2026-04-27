@@ -3,13 +3,20 @@ from nonebot.matcher import Matcher
 from nonebot.typing import T_State
 from nonebot_plugin_saa import MessageFactory
 from nonebot_plugin_saa.abstract_factories import FinishedException
-from seerapi_models import EquipORM, SuitORM
+from seerapi_models import EquipORM, SuitORM, TitlePartORM
 
 from ironsbot.utils import build_sub_line
 from ironsbot.utils.rule import no_reply, startswith_or_endswith
 
-from ..depends.db import EquipDataGetter, GetEquipData, GetSuitData, SuitDataGetter
-from ..depends.image import EquipImageGetter, SuitImageGetter
+from ..depends.db import (
+    EquipDataGetter,
+    GetEquipData,
+    GetSuitData,
+    GetTitleData,
+    SuitDataGetter,
+    TitleDataGetter,
+)
+from ..depends.image import EquipImageGetter, SuitImageGetter, TitleImageGetter
 from ..group import matcher_group
 from ..prompt import (
     Prompt,
@@ -82,7 +89,10 @@ async def handle_suit(
         ],
     )
     await enter_prompt(
-        matcher, event, state, prompt,
+        matcher,
+        event,
+        state,
+        prompt,
         simple_prompt_resolver(SuitDataGetter, _build_suit_message, "套装"),
     )
 
@@ -109,7 +119,6 @@ async def _build_equip_message(equip: EquipORM) -> MessageFactory:
 async def handle_equip(
     matcher: Matcher,
     state: T_State,
-    bot: Bot,
     event: Event,
     equips: tuple[EquipORM, ...] = GetEquipData(),
 ) -> None:
@@ -131,6 +140,57 @@ async def handle_equip(
         ],
     )
     await enter_prompt(
-        matcher, event, state, prompt,
+        matcher,
+        event,
+        state,
+        prompt,
         simple_prompt_resolver(EquipDataGetter, _build_equip_message, "装备部件"),
+    )
+
+
+title_matcher = matcher_group.on_message(
+    rule=startswith_or_endswith(("称号", "查询称号信息"), suffixes="称号") & no_reply()
+)
+
+
+async def _build_title_message(title: TitlePartORM) -> MessageFactory:
+    msg = MessageFactory()
+    msg += await TitleImageGetter.get(str(title.id))
+    msg += f"【{title.name}】\n"
+    msg += f"🆔：{title.id}\n"
+    if title.ability_desc:
+        msg += f"效果：{title.ability_desc}"
+    return msg
+
+
+@title_matcher.handle()
+async def handle_title(
+    matcher: Matcher,
+    state: T_State,
+    event: Event,
+    titles: tuple[TitlePartORM, ...] = GetTitleData(),
+) -> None:
+    if not titles:
+        raise FinishedException
+
+    if len(titles) == 1:
+        msg = await _build_title_message(titles[0])
+        await msg.finish()
+
+    elif len(titles) > PROMPT_MAX_ITEMS:
+        await matcher.finish(f"重名超过{PROMPT_MAX_ITEMS}个，请重新检索关键词！")
+
+    prompt = Prompt(
+        title="请问你想查询的称号是……",
+        items=[
+            PromptItem(name=title.name, desc=str(title.id), value=title.id)
+            for title in titles
+        ],
+    )
+    await enter_prompt(
+        matcher,
+        event,
+        state,
+        prompt,
+        simple_prompt_resolver(TitleDataGetter, _build_title_message, "称号"),
     )

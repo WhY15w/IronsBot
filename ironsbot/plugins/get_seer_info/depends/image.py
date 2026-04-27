@@ -57,3 +57,9 @@ EquipImageGetter = GetImage(
     "https://raw.githubusercontent.com/SeerAPI/seer-unity-assets/refs/heads/main/newseer/assets/art/ui/assets/item/cloth/prev/{}.png",
 )
 EquipImage = Depends(EquipImageGetter)
+
+TitleImageGetter = GetImage(
+    "https://cnb.cool/SeerAPI/seer-unity-assets/-/git/raw/main/newseer/assets/art/ui/assets/achieve/title/{}.png",
+    "https://raw.githubusercontent.com/SeerAPI/seer-unity-assets/refs/heads/main/newseer/assets/art/ui/assets/achieve/title/{}.png",
+)
+TitleImage = Depends(TitleImageGetter)
